@@ -9,10 +9,7 @@ const root = ReactDOM.createRoot(
 );
 root.render(
   <React.StrictMode>
-    <h1 className="text-3xl font-bold underline">
-      Hello world!
-    </h1>
-    <ChameleonClient />
+    <ChameleonClient playerID='0' />
   </React.StrictMode>
 );
 
