@@ -10,7 +10,7 @@ export interface ChameleonState {
 
     word_to_describe: number;
     player_who_is_chameleon: number;
-    votes: Array<number|null>;
+    votes: { [key: string]: string | null };
 }
 
 export interface ChameleonPlayerView {
@@ -18,6 +18,8 @@ export interface ChameleonPlayerView {
 
     words: string[];
     player_words: Array<string|null>;
+    votes: { [key: string]: number };
+    ownVote: string | null;
 }
 
 export interface NotChameleonPlayerView {
@@ -25,6 +27,8 @@ export interface NotChameleonPlayerView {
 
     words: string[];
     player_words: Array<string|null>;
+    votes: { [key: string]: number };
+    ownVote: string | null;
 
     word_to_describe: number;
 }
@@ -38,7 +42,8 @@ export const ChameleonGame: Game<ChameleonState> = {
         word_to_describe: Math.floor(Math.random() * board_words[0].length),
         player_words: Array(ctx.numPlayers).fill(null) as Array<string | null>,
         player_who_is_chameleon: Math.floor(Math.random() * ctx.numPlayers),
-        votes: Array(ctx.numPlayers).fill(null) as Array<number | null>
+        // ToDo: Funktioniert nicht, hier wird das null immer zu 0 ??
+        votes: Object.fromEntries(ctx.playOrder.map(it => [it, null]))
     }),
 
     turn: { minMoves: 1, maxMoves: 1 },
@@ -46,14 +51,29 @@ export const ChameleonGame: Game<ChameleonState> = {
     playerView: (G, ctx, playerID) => {
         console.log(G.player_who_is_chameleon)
         console.log(playerID);
-        
+
+        const playerVotes: { [key: string]: number } = Object.fromEntries(ctx.playOrder.map(it => [it, 0]));
+
+        Object.entries(G.votes)
+            .forEach(it => {
+                const [player, playerVoted] = it;
+
+                if (!playerVoted)
+                    return
+
+                playerVotes[playerVoted] = playerVotes[playerVoted]++;
+            })
+
+        let ownVote = G.votes[playerID!];
         if (G.player_who_is_chameleon !== Number.parseInt(playerID!)) {
             return {
                 is_chameleon: false,
 
                 player_words: G.player_words,
                 word_to_describe: G.word_to_describe,
-                words: G.words
+                words: G.words,
+                votes: playerVotes,
+                ownVote: ownVote
             } as NotChameleonPlayerView
         }
 
@@ -61,7 +81,9 @@ export const ChameleonGame: Game<ChameleonState> = {
             is_chameleon: true,
 
             player_words: G.player_words,
-            words: G.words
+            words: G.words,
+            votes: playerVotes,
+            ownVote: ownVote
         } as ChameleonPlayerView
     },
 
@@ -93,9 +115,13 @@ export const ChameleonGame: Game<ChameleonState> = {
                     votingStage: {
                         moves: { 
                             vote: (G, ctx, playerId) => {
-                                G.votes[Number.parseInt(ctx.playerID!)] = playerId
+                                G.votes[ctx.playerID!] = playerId
 
-                                if (!G.votes.includes(null)) {
+                                console.log(G)
+
+                                // Es gibt keinen Spieler mehr, der noch keinen Vote abgegeben
+                                // hat bzw. alle Spieler haben abgestimmt
+                                if (Object.entries(G.votes).filter(it => !it).length === 0) {
                                     ctx.events?.endStage()
                                     ctx.events?.endTurn()
                                     ctx.events?.endPhase()
