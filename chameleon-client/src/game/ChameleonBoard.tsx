@@ -7,7 +7,7 @@ function Card({text, isSelectedWord}: { text: string, isSelectedWord: boolean })
     const content = isSelectedWord ? <mark>{text}</mark> : <>{text}</>;
 
     return <div key={text}
-                className="flex justify-center items-center p-2 m-1 w-48 h-32 rounded-lg border border-black">
+                className="flex justify-center items-center p-2 m-1 rounded-lg border border-black">
         {content}
     </div>
 }
@@ -131,7 +131,9 @@ export function ChameleonBoard({ctx, G, moves, playerID}: BoardProps<ChameleonSt
                 </div>
             }
             <div className="flex justify-center w-full h-screen">
-                <WordBoard playerView={playerView}/>
+                <div className="flex justify-center items-center w-full h-screen">
+                    <WordBoard playerView={playerView}/>
+                </div>
                 <div className="w-92">
                     <div className="">
                         <table>

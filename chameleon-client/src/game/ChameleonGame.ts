@@ -1,24 +1,31 @@
 import { Game } from "boardgame.io";
+import { isNull } from "util";
 
 const board_words = [
     ["Baden-Württemberg", "Bayern", "Berlin", "Brandenburg", "Bremen", "Hamburg", "Hessen", "Mecklenburg-Vorpommern", "Niedersachsen", "Nordrhein-Westfalen", "Rheinland-Pfalz", "Saarland", "Sachsen", "Sachsen-Anhalt", "Schleswig-Holstein", "Thüringen"]
 ]
 
+type VotesMap = { [key: string]: string | null };
+type NumericVotesMap = { [key: string]: number };
+
 export interface ChameleonState {
     words: string[];
-    player_words: Array<string|null>;
+    player_words: Array<string | null>;
 
     word_to_describe: number;
-    player_who_is_chameleon: number;
-    votes: { [key: string]: string | null };
+    player_who_is_chameleon: string;
+    votes: VotesMap;
+
+    chameleonChosenWordIndex: number | null;
+    startNewGameVotes: { [key: string]: boolean };
 }
 
 export interface ChameleonPlayerView {
     is_chameleon: true;
 
     words: string[];
-    player_words: Array<string|null>;
-    votes: { [key: string]: number };
+    player_words: Array<string | null>;
+    votes: NumericVotesMap;
     ownVote: string | null;
 }
 
@@ -26,11 +33,54 @@ export interface NotChameleonPlayerView {
     is_chameleon: false;
 
     words: string[];
-    player_words: Array<string|null>;
-    votes: { [key: string]: number };
+    player_words: Array<string | null>;
+    votes: NumericVotesMap;
     ownVote: string | null;
 
     word_to_describe: number;
+}
+
+function votesMapToNumericVotesMap(
+    playOrder: string[],
+    votes: VotesMap
+): NumericVotesMap {
+    const playerVotes: { [key: string]: number } = Object.fromEntries(playOrder.map(it => [it, 0]));
+
+    Object
+        .entries(votes)
+        .forEach(it => {
+            const [player, playerVoted] = it;
+
+            if (!playerVoted)
+                return
+
+            playerVotes[playerVoted] = playerVotes[playerVoted] + 1;
+        })
+
+    return playerVotes;
+}
+
+/**
+ * Gibt die Spieler-IDs zurück, die von den meisten Spielern
+ * gewählt wurde. Bei Gleichstand werden mehrere Spieler zurück gegeben. 
+ * Ansonsten wird nur eine Spieler-ID zurück gegeben.
+ */
+function playersWithMostVotes(
+    playOrder: string[],
+    votes: VotesMap
+) {
+    const playerVotes = votesMapToNumericVotesMap(playOrder, votes);
+
+    // Wieviele Stimmen wurden auf den / die Spieler mit den 
+    // meisten Stimmen abgegeben?
+    const maxVotesOnPlayer = Math.max(...Object.entries(playerVotes).map(([k, v]) => v));
+
+    // Alle Spieler zurückgeben, welche die 
+    // genau die meisten Stimmen haben.
+    return Object
+        .entries(playerVotes)
+        .filter(([k, v]) => v === maxVotesOnPlayer)
+        .map(([k, v]) => k);
 }
 
 
@@ -41,31 +91,23 @@ export const ChameleonGame: Game<ChameleonState> = {
         words: board_words[0],
         word_to_describe: Math.floor(Math.random() * board_words[0].length),
         player_words: Array(ctx.numPlayers).fill(null) as Array<string | null>,
-        player_who_is_chameleon: Math.floor(Math.random() * ctx.numPlayers),
+        player_who_is_chameleon: Math.floor(Math.random() * ctx.numPlayers) + "",
         // ToDo: Funktioniert nicht, hier wird das null immer zu 0 ??
-        votes: Object.fromEntries(ctx.playOrder.map(it => [it, null]))
+        votes: Object.fromEntries(ctx.playOrder.map(it => [it, null])),
+        chameleonChosenWordIndex: null,
+        startNewGameVotes: Object.fromEntries(ctx.playOrder.map(it => [it, false]))
     }),
 
     turn: { minMoves: 1, maxMoves: 1 },
 
     playerView: (G, ctx, playerID) => {
-        console.log(G.player_who_is_chameleon)
-        console.log(playerID);
+        console.log("Global State: ")
+        console.log("G.votes: ", JSON.stringify(G.votes))
 
-        const playerVotes: { [key: string]: number } = Object.fromEntries(ctx.playOrder.map(it => [it, 0]));
-
-        Object.entries(G.votes)
-            .forEach(it => {
-                const [player, playerVoted] = it;
-
-                if (!playerVoted)
-                    return
-
-                playerVotes[playerVoted] = playerVotes[playerVoted]++;
-            })
+        const playerVotes = votesMapToNumericVotesMap(ctx.playOrder, G.votes);
 
         let ownVote = G.votes[playerID!];
-        if (G.player_who_is_chameleon !== Number.parseInt(playerID!)) {
+        if (G.player_who_is_chameleon !== playerID!) {
             return {
                 is_chameleon: false,
 
@@ -107,37 +149,78 @@ export const ChameleonGame: Game<ChameleonState> = {
             next: "discussAndVote"
         },
 
-        discussAndVote: {            
+        discussAndVote: {
             turn: {
                 activePlayers: { all: 'votingStage' },
 
                 stages: {
                     votingStage: {
-                        moves: { 
+                        moves: {
                             vote: (G, ctx, playerId) => {
                                 G.votes[ctx.playerID!] = playerId
 
-                                console.log(G)
-
                                 // Es gibt keinen Spieler mehr, der noch keinen Vote abgegeben
                                 // hat bzw. alle Spieler haben abgestimmt
-                                if (Object.entries(G.votes).filter(it => !it).length === 0) {
+                                if (Object.entries(G.votes).filter(entry => !entry[1]).length === 0) {
                                     ctx.events?.endStage()
-                                    ctx.events?.endTurn()
-                                    ctx.events?.endPhase()
+                                    ctx.events?.endTurn({ next: G.player_who_is_chameleon })
+
+                                    const votedPlayers = playersWithMostVotes(ctx.playOrder, G.votes);
+
+                                    if (votedPlayers.length > 1 || !votedPlayers.includes(G.player_who_is_chameleon)) {
+                                        // Chameleon hat gewonnen, da mehrere
+                                        // Personen mit der gleichen Anzahl gevoted wurden.
+                                        // oder 
+                                        ctx.events?.setPhase("gameEnded")
+                                    } else {
+                                        // Spieler haben herausgefunden, wer das Chameleon ist;
+                                        // nun ist das Chameleon dran und hat die Möglichkeit
+                                        // das gesuchte Wort zu finden.
+                                        ctx.events?.setPhase("chameleonChoosesWord")
+                                    }
+
                                 }
                             }
-                         },
+                        },
                     },
                 },
 
+            },
+        },
+
+        chameleonChoosesWord: {
+
+            moves: {
+                chooseWord: (G, ctx, wordIndex) => {
+                    G.chameleonChosenWordIndex = wordIndex
+
+                    if (G.chameleonChosenWordIndex === G.word_to_describe) {
+                        // Chameleon hat gewonnen
+                    } else {
+                        // Chameleon hat verloren
+                    }
+
+                    ctx.events?.setPhase("gameEnded")
+                }
             },
 
             next: "gameEnded"
         },
 
-        gameEnded: {
-            
+        gameEnded: {            
+            turn: {
+                activePlayers: { all: 'votingForNewGameStage' },
+
+                stages: {
+                    votingForNewGameStage: {
+                        moves: {
+                            vote: (G, ctx) => {
+                                        
+                            }
+                        }
+                    }
+                }
+            }
 
         }
 
