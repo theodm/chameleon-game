@@ -1,16 +1,10 @@
 import {BoardProps} from "boardgame.io/react";
 import {useEffect, useState} from "react";
-import {ChameleonPlayerView, ChameleonState, NotChameleonPlayerView} from "./ChameleonGame";
+import {ChameleonPlayerView, ChameleonState, NotChameleonPlayerView} from "../ChameleonGame";
 import {Ctx} from "boardgame.io";
+import { isChameleon } from "./StateUtils";
+import { WordBoard } from "./WordBoard";
 
-function Card({text, isSelectedWord}: { text: string, isSelectedWord: boolean }) {
-    const content = isSelectedWord ? <mark>{text}</mark> : <>{text}</>;
-
-    return <div key={text}
-                className="flex justify-center items-center p-2 m-1 rounded-lg border border-black">
-        {content}
-    </div>
-}
 
 function PlayerToWord({
                           playerName,
@@ -23,26 +17,7 @@ function PlayerToWord({
     </tr>
 }
 
-function isChameleon(playerView: ChameleonPlayerView | NotChameleonPlayerView): playerView is ChameleonPlayerView {
-    return playerView.is_chameleon
-}
 
-
-function isNotChameleon(playerView: ChameleonPlayerView | NotChameleonPlayerView): playerView is NotChameleonPlayerView {
-    return !isChameleon(playerView)
-}
-
-function WordBoard({playerView}: { playerView: ChameleonPlayerView | NotChameleonPlayerView }) {
-    return <div>
-        <div className="grid grid-cols-[repeat(4,_min-content)]">
-            {playerView.words.map((it, index) => <Card
-                key={it}
-                text={it}
-                isSelectedWord={!isChameleon(playerView) && playerView.word_to_describe === index}/>
-            )}
-        </div>
-    </div>;
-}
 
 function Box({children}: { children: any }) {
     return <div className="p-2 m-2 border border-black">
@@ -75,6 +50,8 @@ function InputWordBox({
     onWordSelected: (word: string) => void
 }) {
     const [currentWord, setCurrentWord] = useState("");
+
+    
 
     return <form>
         <div className="p-2">
@@ -119,8 +96,10 @@ export function ChameleonBoard({ctx, G, moves, playerID}: BoardProps<ChameleonSt
 
     return (
         <div>
+            <div className="flex relative justify-center w-full h-screen">
+                
             {playerRoleIsShown &&
-                <div className="flex fixed top-0 right-0 left-0 z-50 justify-center items-center h-full">
+                <div className="flex absolute top-0 right-0 left-0 z-50 justify-center items-center h-full">
                     <div
                         className="flex relative justify-center items-center w-full h-64 text-2xl text-white bg-black/90">
                         <div className="absolute top-1 right-5 text-3xl text-white cursor-pointer top"
@@ -130,7 +109,6 @@ export function ChameleonBoard({ctx, G, moves, playerID}: BoardProps<ChameleonSt
                     </div>
                 </div>
             }
-            <div className="flex justify-center w-full h-screen">
                 <div className="flex justify-center items-center w-full h-screen">
                     <WordBoard playerView={playerView}/>
                 </div>
