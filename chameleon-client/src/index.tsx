@@ -15,15 +15,9 @@ const root = ReactDOM.createRoot(
 root.render(
   <div>
     <MultiPage>
-      <div className="bg-red-50">
-        <ChameleonClient playerID="0" />
-      </div>
-      <div className="bg-yellow-50">
-        <ChameleonClient playerID="1" />
-      </div>
-      <div className="bg-green-50">
-        <ChameleonClient playerID="2" />
-      </div>
+      <ChameleonClient playerID="0" />
+      <ChameleonClient playerID="1" />
+      <ChameleonClient playerID="2" />
     </MultiPage>
   </div>
 );

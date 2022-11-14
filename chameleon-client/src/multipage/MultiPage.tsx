@@ -89,7 +89,7 @@ export function MultiPage({ children }: { children: any }) {
             <div className='relative' style={({})}>
                 <div className="absolute" style={({ zIndex: "4", "width": lengthOfWindow + "px", "height": heightOfWindow + "px" })}>
                     <div className={"transition"} style={({ "marginLeft": marginLeft + "px", "marginRight": marginRight + "px", "marginTop": marginTop + "px", "marginBottom": marginBottom + "px", "transform": "scale(" + zoom + ")", "transitionProperty": "scale, margin" })}>
-                        <div className="w-screen h-screen" key={index} >
+                        <div className="w-screen h-screen bg-white" key={index} >
                             {element}
                         </div>
                     </div>
