@@ -1,4 +1,4 @@
-import { ChameleonPlayerView, NotChameleonPlayerView } from "../ChameleonGame";
+import { ChameleonPlayerView, NotChameleonPlayerView } from "../../../../chameleon-shared/src/game/ChameleonGame";
 import { isChameleon } from "./StateUtils";
 
 function Card({ text, index, isCorrectWord, isWordSelectedByChameleon, selectable, onSelectWord }: { text: string, index: number, isCorrectWord: boolean, isWordSelectedByChameleon: boolean, selectable: boolean, onSelectWord: (wordIndex: number) => void }) {
@@ -11,7 +11,6 @@ function Card({ text, index, isCorrectWord, isWordSelectedByChameleon, selectabl
         {text}
     </div>
 }
-
 
 export function WordBoard({
     playerView,

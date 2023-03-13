@@ -1,4 +1,4 @@
-import { ChameleonPlayerView, NotChameleonPlayerView } from "../ChameleonGame"
+import { ChameleonPlayerView, NotChameleonPlayerView } from "../../../../chameleon-shared/src/game/ChameleonGame"
 
 export function isChameleon(playerView: ChameleonPlayerView | NotChameleonPlayerView): playerView is ChameleonPlayerView {
     return playerView.is_chameleon

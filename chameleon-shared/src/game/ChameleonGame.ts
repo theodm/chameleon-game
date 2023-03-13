@@ -1,17 +1,26 @@
-import { Game } from "boardgame.io";
-import { isNull } from "util";
+import {Ctx, Game} from "boardgame.io";
 
 const board_words = [
-    ["Baden-Württemberg", "Bayern", "Berlin", "Brandenburg", "Bremen", "Hamburg", "Hessen", "Mecklenburg-Vorpommern", "Niedersachsen", "Nordrhein-Westfalen", "Rheinland-Pfalz", "Saarland", "Sachsen", "Sachsen-Anhalt", "Schleswig-Holstein", "Thüringen"]
+    // Bundesländer
+    ["Baden-Württemberg", "Bayern", "Berlin", "Brandenburg", "Bremen", "Hamburg", "Hessen", "Mecklenburg-Vorpommern", "Niedersachsen", "Nordrhein-Westfalen", "Rheinland-Pfalz", "Saarland", "Sachsen", "Sachsen-Anhalt", "Schleswig-Holstein", "Thüringen"],
+    // Zoo
+    ["Elephant", "Giraffe", "Koala", "Tiger", "Lion", "Leopard", "Meerkat", "Buffalo", "Ostrich", "Owl", "Eagle", "Parrot", "Scorpion", "Alligator", "Zebra", "Gorilla"]
+
 ]
 
 type VotesMap = { [key: string]: string | null };
 type NumericVotesMap = { [key: string]: number };
+export type NewGameVotes = { [key: string]: boolean };
 
 export interface ChameleonState {
     /**
+     * Spieler, bei dem das Spiel gestartet ist.
+     */
+    startPlayer: string;
+
+    /**
      * Wörter auf dem Spielfeld.
-     * 
+     *
      * von links nach rechts,
      * von oben nach unten
      */
@@ -20,7 +29,7 @@ export interface ChameleonState {
     /**
      * Wörter, die ein Spieler eingegeben hat, um
      * das gesuchte Wort zu beschreiben.
-     * 
+     *
      * falls null: Spieler hat noch kein Wort ausgewählt.
      */
     player_words: Array<string | null>;
@@ -53,8 +62,9 @@ export interface ChameleonState {
      * Abstimmung darüber, ob ein Spieler bereit für die
      * neue Runde ist.
      */
-    startNewGameVotes: { [key: string]: boolean };
+    startNewGameVotes: NewGameVotes;
 }
+
 
 export interface ChameleonPlayerView {
     is_chameleon: true;
@@ -70,12 +80,14 @@ export interface ChameleonPlayerView {
 
     /**
      * Index des Wortes, welches beschrieben werden soll.
-     * 
+     *
      * Erst sichtbar für das Chameleon, falls das Spiel zu Ende ist.
      */
     word_to_describe: number | null;
 
     player_who_is_chameleon: string | null;
+
+    startNewGameVotes: NewGameVotes;
 }
 
 export interface NotChameleonPlayerView {
@@ -96,6 +108,8 @@ export interface NotChameleonPlayerView {
      * PlayerID des Chameleon, sobald dieser entdeckt wurde oder das Spiel beendet ist.
      */
     player_who_is_chameleon: string | null;
+
+    startNewGameVotes: NewGameVotes;
 }
 
 function votesMapToNumericVotesMap(
@@ -120,7 +134,7 @@ function votesMapToNumericVotesMap(
 
 /**
  * Gibt die Spieler-IDs zurück, die von den meisten Spielern
- * gewählt wurde. Bei Gleichstand werden mehrere Spieler zurück gegeben. 
+ * gewählt wurde. Bei Gleichstand werden mehrere Spieler zurück gegeben.
  * Ansonsten wird nur eine Spieler-ID zurück gegeben.
  */
 export function playersWithMostVotes(
@@ -142,16 +156,25 @@ export function playersWithMostVotes(
 }
 
 function randomElement<T>(items: T[]) {
-    var item = items[Math.floor(Math.random() * items.length)];
+    const item = items[Math.floor(Math.random() * items.length)];
 
     return item
 }
 
-export const ChameleonGame: Game<ChameleonState> = {
-    minPlayers: 3,
 
-    setup: (ctx) => ({
-        words: board_words[0],
+
+function resetState(ctx: Ctx) {
+    // Die aktuellen Wörter werden zufällig aus den verfügbaren
+    // Spielfeldern gewählt.
+    const words = randomElement(board_words)
+
+    return {
+        startPlayer: ctx.currentPlayer,
+        words: words,
+        // Innerhalb der Wörter wird ein Wort zufällig als geheimes Wort
+        // ausgewählt:
+        //
+        // Bsp.: 0..15
         word_to_describe: Math.floor(Math.random() * board_words[0].length),
         player_words: Array(ctx.numPlayers).fill(null) as Array<string | null>,
         player_who_is_chameleon: randomElement(ctx.playOrder),
@@ -160,11 +183,21 @@ export const ChameleonGame: Game<ChameleonState> = {
         chameleonChosenWordIndex: null,
         startNewGameVotes: Object.fromEntries(ctx.playOrder.map(it => [it, false])),
         playerWon: null
-    }),
+    }
+}
 
-    turn: { minMoves: 1, maxMoves: 1 },
+export const ChameleonGame: Game<ChameleonState> = {
+    name: "Chameleon",
+    minPlayers: 3,
+    maxPlayers: 20,
 
-    playerView: (G, ctx, playerID) => {
+    setup: ({ctx}) => (
+        resetState(ctx)
+    ),
+
+    turn: {minMoves: 1, maxMoves: 1},
+
+    playerView: ({G, ctx, playerID}) => {
         console.log("Global State: ")
         console.log("G.votes: ", JSON.stringify(G.votes))
         console.log("G.player_who_is_chameleon: ", JSON.stringify(G.player_who_is_chameleon))
@@ -186,7 +219,9 @@ export const ChameleonGame: Game<ChameleonState> = {
 
                 chameleonChosenWordIndex: G.chameleonChosenWordIndex,
 
-                player_who_is_chameleon: ctx.phase === "chameleonChoosesWord" || ctx.phase === "gameEnded" ? G.player_who_is_chameleon : null
+                player_who_is_chameleon: ctx.phase === "chameleonChoosesWord" || ctx.phase === "gameEnded" ? G.player_who_is_chameleon : null,
+
+                startNewGameVotes: G.startNewGameVotes
             }
 
             return retVal
@@ -208,7 +243,9 @@ export const ChameleonGame: Game<ChameleonState> = {
             // wenn das Spiel beendet ist.
             word_to_describe: ctx.phase === "gameEnded" ? G.word_to_describe : null,
 
-            player_who_is_chameleon: G.player_who_is_chameleon
+            player_who_is_chameleon: G.player_who_is_chameleon,
+
+            startNewGameVotes: G.startNewGameVotes
         }
 
         return retVal
@@ -218,31 +255,48 @@ export const ChameleonGame: Game<ChameleonState> = {
         selectWord: {
             start: true,
 
+            turn: {
+                order: {
+                    // Get the initial value of playOrderPos.
+                    // This is called at the beginning of the phase.
+                    first: ({ G, ctx }) => ctx.playOrder.indexOf(G.startPlayer),
+
+                    // Get the next value of playOrderPos.
+                    // This is called at the end of each turn.
+                    // The phase ends if this returns undefined.
+                    next: ({ G, ctx }) => (ctx.playOrderPos + 1) % ctx.numPlayers
+                }
+            },
+
             moves: {
-                selectAWord: (G, ctx, word) => {
-                    G.player_words[Number.parseInt(ctx.currentPlayer)] = word
+                selectAWord: ({G, ctx, events, playerID}, word) => {
+                    console.log(playerID + " selected word " + word)
+
+                    G.player_words[Number.parseInt(ctx.currentPlayer)] = word as string
 
                     // Nachdem der Spieler sein Wort gewählt hat,
                     // ist der nächste Spieler dran.
-                    ctx.events!.endTurn();
+                    events.endTurn();
                 },
             },
 
             // Alle Spieler haben ein Wort ausgewählt
-            endIf: G => !G.player_words.includes(null),
+            endIf: ({G}) => !G.player_words.includes(null),
             // dann in die Diskussions- und Abstimmrunde
             next: "discussAndVote"
         },
 
         discussAndVote: {
             turn: {
-                activePlayers: { all: 'votingStage' },
+                activePlayers: {all: 'votingStage'},
 
                 stages: {
                     votingStage: {
                         moves: {
-                            vote: (G, ctx, playerId) => {
-                                G.votes[ctx.playerID!] = playerId
+                            vote: ({G, ctx, events, playerID}, playerId) => {
+                                console.log("Player " + playerID + " voted " + playerId)
+
+                                G.votes[playerID] = playerId as string
 
                                 // Es gibt keinen Spieler mehr, der noch keinen Vote abgegeben
                                 // hat bzw. alle Spieler haben abgestimmt
@@ -254,12 +308,12 @@ export const ChameleonGame: Game<ChameleonState> = {
                                         // Personen mit der gleichen Anzahl gevoted wurden
                                         // oder eine falsche Person gevoted wurde.
                                         G.playerWon = "ChameleonWon_WrongPlayerVoted";
-                                        ctx.events?.setPhase("gameEnded")
+                                        events.setPhase("gameEnded")
                                     } else {
                                         // Spieler haben herausgefunden, wer das Chameleon ist;
                                         // nun ist das Chameleon dran und hat die Möglichkeit
                                         // das gesuchte Wort zu finden.
-                                        ctx.events?.setPhase("chameleonChoosesWord")
+                                        events.setPhase("chameleonChoosesWord")
                                     }
 
                                 }
@@ -277,22 +331,22 @@ export const ChameleonGame: Game<ChameleonState> = {
                 order: {
                     // Get the initial value of playOrderPos.
                     // This is called at the beginning of the phase.
-                    first: (G, ctx) => ctx.playOrder.indexOf(G.player_who_is_chameleon),
-                
+                    first: ({G, ctx}) => ctx.playOrder.indexOf(G.player_who_is_chameleon),
+
                     // Get the next value of playOrderPos.
                     // This is called at the end of each turn.
                     // The phase ends if this returns undefined.
-                    next: (G, ctx) => undefined
+                    next: ({G, ctx}) => undefined
                 },
 
-                activePlayers: { currentPlayer: 'chameleonChoosesStage' },
+                activePlayers: {currentPlayer: 'chameleonChoosesStage'},
 
                 stages: {
 
                     chameleonChoosesStage: {
                         moves: {
-                            chooseWord: (G, ctx, wordIndex) => {
-                                G.chameleonChosenWordIndex = wordIndex
+                            chooseWord: ({G, ctx, events}, wordIndex) => {
+                                G.chameleonChosenWordIndex = wordIndex as number
 
                                 if (G.chameleonChosenWordIndex === G.word_to_describe) {
                                     // Chameleon hat gewonnen
@@ -302,7 +356,7 @@ export const ChameleonGame: Game<ChameleonState> = {
                                     G.playerWon = "PlayersWon";
                                 }
 
-                                ctx.events?.setPhase("gameEnded")
+                                events.setPhase("gameEnded")
                             }
                         }
                     }
@@ -314,12 +368,37 @@ export const ChameleonGame: Game<ChameleonState> = {
 
         gameEnded: {
             turn: {
-                activePlayers: { all: 'votingForNewGameStage' },
+                activePlayers: {all: 'votingForNewGameStage'},
 
                 stages: {
                     votingForNewGameStage: {
                         moves: {
-                            vote: (G, ctx) => {
+                            voteForNewGame: ({G, ctx, events, playerID}) => {
+                                G.startNewGameVotes[playerID] = true
+
+                                // Wenn alle die neue Runde bestätigt haben:
+                                // Neue Runde starten
+                                if (Object.entries(G.startNewGameVotes).length === Object.entries(G.startNewGameVotes).filter(it => it[1]).length) {
+                                    const newState = resetState(ctx)
+
+                                    G.startNewGameVotes = newState.startNewGameVotes
+                                    G.votes = newState.votes
+                                    G.words = newState.words
+                                    G.playerWon = newState.playerWon
+                                    G.player_words = newState.player_words
+                                    G.chameleonChosenWordIndex = newState.chameleonChosenWordIndex
+                                    G.player_who_is_chameleon = newState.player_who_is_chameleon
+                                    G.word_to_describe = newState.word_to_describe
+
+                                    const nextPlayer = ctx.playOrder[(ctx.playOrder.indexOf(G.startPlayer) + 1) % ctx.playOrder.length]
+
+                                    G.startPlayer = nextPlayer
+
+                                    console.log("new startPlayer: ", nextPlayer)
+
+                                    events.endTurn({ next: nextPlayer})
+                                    events.setPhase("selectWord")
+                                }
 
                             }
                         }

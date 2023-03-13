@@ -1,0 +1,11 @@
+[Unit]
+Description=chameleon
+
+[Service]
+Type=simple
+User=chameleon
+ExecStart=/home/apps/chameleon/chameleon-server-linux
+WorkingDirectory=/home/apps/chameleon
+
+[Install]
+WantedBy=multi-user.target
