@@ -1,5 +1,6 @@
 import com.github.gradle.node.npm.task.NpmTask
 import net.schmizz.sshj.SSHClient
+import java.util.*
 
 plugins {
     id("org.hidetake.ssh") version "2.11.2"
@@ -8,11 +9,13 @@ plugins {
 buildscript { dependencies { classpath("com.hierynomus:sshj:0.32.0") } }
 
 tasks.register("buildFullServer", NpmTask::class.java) {
+    dependsOn("npmInstall")
     dependsOn(":chameleon-client:copyAndBuildClient")
-    dependsOn(tasks.getByName("npmInstall"))
 
     inputs.files(fileTree("node_modules"))
     inputs.files(fileTree("src"))
+    // ToDo: /dist/client besser in /client umziehen
+    inputs.files(fileTree("dist/client"))
 
     inputs.file("package.json")
     inputs.file("package-lock.json")
@@ -25,13 +28,20 @@ tasks.register("buildFullServer", NpmTask::class.java) {
 }
 
 tasks.register("deployServer", Task::class.java) {
+    dependsOn("buildFullServer")
+
     this.doLast {
         val ssh = SSHClient()
 
-        ssh.addHostKeyVerifier("da:c8:48:5f:c7:ca:0f:13:89:4e:f9:47:21:51:d1:c6")
+        val props = Properties()
+            .apply {
+                load(rootDir.resolve("keys.properties").inputStream())
+            }
 
-        ssh.connect("v2202208181784199083.luckysrv.de")
-        ssh.authPassword("root", "wZH7bhh9cREzCGX")
+        ssh.addHostKeyVerifier(props["DEPLOY_HOST_KEY_VERIFIER"].toString())
+
+        ssh.connect(props["DEPLOY_HOST"].toString())
+        ssh.authPassword(props["DEPLOY_HOST_USER"].toString(), props["DEPLOY_HOST_PASSWORD"].toString())
 
         try {
             fun exec(cmd: String) {

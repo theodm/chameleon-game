@@ -1,0 +1,35 @@
+{
+  "name": "chameleon-server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "bin": "./dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "tsc && node ./dist/index.js",
+    "package": "tsc && pkg ."
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/koa-mount": "^4.0.2",
+    "@types/koa-static": "^4.0.2",
+    "boardgame.io": "^0.50.2",
+    "chameleon-shared": "file:../chameleon-shared",
+    "koa-mount": "^4.0.0",
+    "koa-static": "^5.0.0",
+    "pkg": "^5.8.0"
+  },
+  "devDependencies": {
+    "typescript": "^4.9.5"
+  },
+  "pkg": {
+    "scripts": "dist/**/*.js",
+    "assets": "dist/client/**/*",
+    "targets": [
+      "node14-linux",
+      "node14-win"
+    ],
+    "outputPath": "binary"
+  }
+}

@@ -303,3 +303,5 @@ gradle-app.setting
 build
 
 keys.properties
+/chameleon-server/binary/chameleon-server-linux
+/chameleon-server/binary/chameleon-server-win.exe

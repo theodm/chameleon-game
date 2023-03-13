@@ -1,7 +1,7 @@
 import com.github.gradle.node.npm.task.NpmTask
 
 tasks.register("buildClient", NpmTask::class.java) {
-    dependsOn(tasks.getByName("npmInstall"))
+    dependsOn("npmInstall")
 
     inputs.files(fileTree("node_modules"))
     inputs.files(fileTree("src"))
@@ -19,7 +19,7 @@ tasks.register("buildClient", NpmTask::class.java) {
 }
 
 tasks.register("copyAndBuildClient", Copy::class.java) {
-    dependsOn(tasks.getByName("buildClient"))
+    dependsOn("buildClient")
 
     from(projectDir
         .toPath()

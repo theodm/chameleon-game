@@ -29,10 +29,22 @@ const root = ReactDOM.createRoot(
  * Webserver.
  */
 function realClient() {
+    let url = ""
+    if (process.env.NODE_ENV === 'development') {
+        // Wenn wir den Client im Watch-Modus starten,
+        // dann greifen wir auf den lokalen Server mit dem Port 8000
+        // zu.
+        url = `http://${window.location.hostname}:8000`;
+    } else {
+        // Ansonsten gehen wir davon aus, dass wir schon deployed sind und
+        // nehmen die eigene Adresse
+        url = `http://${window.location.hostname}:${window.location.port}`
+    }
+
     return <div>
         <Lobby
-            gameServer={`http://${window.location.hostname}:8000`}
-            lobbyServer={`http://${window.location.hostname}:8000`}
+            gameServer={url}
+            lobbyServer={url}
             debug={{
                 collapseOnLoad: true
             }}
