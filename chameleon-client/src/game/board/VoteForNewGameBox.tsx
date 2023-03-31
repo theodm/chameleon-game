@@ -5,7 +5,7 @@ export function VoteForNewGameBox({
                                       thisPlayerID,
                                       newGameVotes,
                                       voteForNewGame
-                                  }: { thisPlayerID: string, newGameVotes: { [key: string]: boolean }, voteForNewGame: () => void }) {
+                                  }: { thisPlayerID: string, newGameVotes: { [playerID: string]: boolean }, voteForNewGame: () => void }) {
 
     const thisPlayerVoted = newGameVotes[thisPlayerID]
     const numberOfPlayersWhoVoted = Object
@@ -17,7 +17,7 @@ export function VoteForNewGameBox({
         .length
 
     return <div className="flex justify-center items-center h-16 text-center">
-        <ButtonWithLabel onClick={voteForNewGame} text={!thisPlayerVoted ? "Nächste Runde" : "Warte auf Mitspieler"}
+        <ButtonWithLabel onClick={() => voteForNewGame()} text={!thisPlayerVoted ? "Nächste Runde" : "Warte auf Mitspieler"}
                          disabled={thisPlayerVoted} label={`${numberOfPlayersWhoVoted}/${numberOfPlayers}`}/>
     </div>
 }

@@ -305,3 +305,5 @@ build
 keys.properties
 /chameleon-server/binary/chameleon-server-linux
 /chameleon-server/binary/chameleon-server-win.exe
+
+words.json
