@@ -44,12 +44,38 @@ tasks.register("deployServer", Task::class.java) {
         ssh.authPassword(props["DEPLOY_HOST_USER"].toString(), props["DEPLOY_HOST_PASSWORD"].toString())
 
         try {
+            /**
+             * Executes a command on a remote host using SSH and prints the command, the output and the return code.
+             * @param cmd The command to execute on the remote host.
+             * @throws IOException If an I/O error occurs.
+             */
             fun exec(cmd: String) {
+                // Start a new session and execute the command
                 val session = ssh.startSession()
 
-                session
-                    .exec(cmd)
-                    .join()
+                try {
+                    // Print the command
+                    println("[Command]: $cmd")
+
+                    // Execute the command and get the output stream
+                    val command = session.exec(cmd)
+                    val output = command.inputStream.bufferedReader().readText()
+
+                    // Print the output
+                    println("Output: $output")
+
+                    // Wait for the command to finish and get the return code
+                    command.join()
+
+                    val returnCode = command.exitStatus
+
+                    // Print the return code
+                    println("Return code: $returnCode")
+                    println("")
+                } finally {
+                    // Close the session
+                    session.close()
+                }
             }
 
             exec("sudo mkdir /home/apps/chameleon -p")
@@ -70,6 +96,15 @@ tasks.register("deployServer", Task::class.java) {
 
             exec("sudo systemctl enable chameleon")
             exec("sudo systemctl start chameleon")
+
+            // Hochladen der chameleon.conf Datei in den nginx sites-available Ordner
+            ssh.newSCPFileTransfer().upload(projectDir.resolve("chameleon.conf").absolutePath, "/etc/nginx/sites-available/chameleon.conf")
+            // Erstellen eines symbolischen Links von der chameleon.conf Datei in den nginx sites enabled Ordner
+            exec("sudo ln -s /etc/nginx/sites-available/chameleon.conf /etc/nginx/sites-enabled/chameleon.conf")
+            // Testen der nginx Konfiguration auf Fehler
+            exec("sudo nginx -t")
+            // Neustarten von nginx
+            exec("sudo systemctl restart nginx")
         } finally {
             ssh.disconnect()
         }
