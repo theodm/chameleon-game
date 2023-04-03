@@ -215,6 +215,10 @@ export interface AllVotesContainer  {
 }
 
 export interface ChameleonPlayerView {
+    /**
+     * Game-Settings.
+     */
+    settings: GameSettings,
     is_chameleon: true;
 
     boardTitle: string;
@@ -240,6 +244,11 @@ export interface ChameleonPlayerView {
 }
 
 export interface NotChameleonPlayerView {
+    /**
+     * Game-Settings.
+     */
+    settings: GameSettings,
+
     is_chameleon: false;
 
     boardTitle: string;
@@ -464,7 +473,7 @@ export const ChameleonGame: Game<ChameleonState, Record<string, unknown>, GameSe
         let voteContainer: VoteContainer;
 
         if (G.settings.votingVisibility === "AllVotes") {
-            voteContainer = { visibility: "AllVotes", votes: G.votes }
+            voteContainer = { visibility: "AllVotes", votes: { ...G.votes } }
         } else if (G.settings.votingVisibility === "OnlyNumeric") {
             voteContainer = { visibility: "OnlyNumeric", votes: votesMapToNumericVotesMap(ctx.playOrder, G.votes) };
         } else {
@@ -472,9 +481,6 @@ export const ChameleonGame: Game<ChameleonState, Record<string, unknown>, GameSe
         }
 
         console.log("[Generating PlayerView] voteContainer: ", voteContainer)
-
-        const playerVotes = votesMapToNumericVotesMap(ctx.playOrder, G.votes);
-
 
         let ownVote = G.votes[playerID!];
         if (!playerID || G.player_who_is_chameleon !== playerID!) {
@@ -485,6 +491,8 @@ export const ChameleonGame: Game<ChameleonState, Record<string, unknown>, GameSe
             console.log("[Generating PlayerView] Player " + playerID + " is not the chameleon.")
 
             let retVal: NotChameleonPlayerView = {
+                settings: G.settings,
+
                 is_chameleon: false,
 
                 boardTitle: G.boardTitle,
@@ -512,6 +520,8 @@ export const ChameleonGame: Game<ChameleonState, Record<string, unknown>, GameSe
         console.log("[Generating PlayerView] Player " + playerID + " is the chameleon.")
 
         let retVal: ChameleonPlayerView = {
+            settings: G.settings,
+
             is_chameleon: true,
 
             boardTitle: G.boardTitle,
@@ -559,6 +569,7 @@ export const ChameleonGame: Game<ChameleonState, Record<string, unknown>, GameSe
             moves: {
                 selectAWord: ({G, ctx, events, playerID}, word) => {
                     console.log("[Selected Word] Player " + playerID + " selected word " + word + ".")
+                    console.log("G: ", JSON.stringify(G))
 
                     wordMapSetPlayerWord(G.player_words, playerID, word)
 
@@ -585,6 +596,7 @@ export const ChameleonGame: Game<ChameleonState, Record<string, unknown>, GameSe
                         moves: {
                             voteForEveryoneIsTheChameleon: ({G, ctx, events, playerID}) => {
                                 console.log("[Player voted] Player " + playerID + " voted for everyone is the chameleon.")
+                                console.log("G: ", JSON.stringify(G))
 
                                 if (!G.settings.everyoneCanBeChameleon) {
                                     console.log("[Player voted] Player " + playerID + " voted for everyone is the chameleon, but this is not possible in this game mode.")
@@ -612,6 +624,7 @@ export const ChameleonGame: Game<ChameleonState, Record<string, unknown>, GameSe
 
                             vote: ({G, ctx, events, playerID}, playerId) => {
                                 console.log("[Player voted] Player " + playerID + " voted " + playerId + ".")
+                                console.log("G: ", JSON.stringify(G))
 
                                 G.votes[playerID] = playerId as string
 
@@ -691,6 +704,7 @@ export const ChameleonGame: Game<ChameleonState, Record<string, unknown>, GameSe
                         moves: {
                             chooseWord: ({G, ctx, events, playerID}, wordIndex) => {
                                 console.log("[Chameleon chooses Word] Player " + playerID + " (the chameleon) guesses word " + G.words[wordIndex] + ".")
+                                console.log("G: ", JSON.stringify(G))
 
                                 G.chameleonChosenWordIndex = wordIndex as number
 
@@ -725,6 +739,7 @@ export const ChameleonGame: Game<ChameleonState, Record<string, unknown>, GameSe
                         moves: {
                             voteForNewGame: ({G, ctx, events, playerID}) => {
                                 console.log("[Player voted] Player " + playerID + " voted for a new game.")
+                                console.log("G: ", JSON.stringify(G))
 
                                 G.startNewGameVotes[playerID] = true
 
